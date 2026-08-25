@@ -12,6 +12,9 @@ export const useWorkersStore = defineStore("workers", {
       invoiceWorkerRunning: false,
       tokenWorkerRunning: false,
       checkInterval: 5000,
+      flashAddressListener: null as NodeJS.Timeout | null,
+      flashAddressWorkerRunning: false,
+      flashAddressPollInterval: 30000,
     };
   },
   getters: {},
@@ -44,7 +47,7 @@ export const useWorkersStore = defineStore("workers", {
           console.log("### invoiceCheckWorker setInterval", nInterval);
 
           // this will throw an error if the invoice is pending
-          await walletStore.checkInvoice(quote, false);
+          await walletStore.checkInvoiceBolt11(quote, false);
 
           // only without error (invoice paid) will we reach here
           console.log("### stopping invoice check worker");
@@ -77,7 +80,10 @@ export const useWorkersStore = defineStore("workers", {
             this.clearAllWorkers();
           }
           console.log("### checkTokenSpendableWorker setInterval", nInterval);
-          let paid = await walletStore.checkTokenSpendable(historyToken, false);
+          const paid = await walletStore.checkTokenSpendable(
+            historyToken,
+            false
+          );
           if (paid) {
             console.log("### stopping token check worker");
             this.clearAllWorkers();
@@ -88,6 +94,26 @@ export const useWorkersStore = defineStore("workers", {
           this.clearAllWorkers();
         }
       }, this.checkInterval);
+    },
+    startFlashAddressWorker: async function () {
+      const { useFlashAddressStore } = await import("./flashAddress");
+      const flashStore = useFlashAddressStore();
+      if (!flashStore.enabled || this.flashAddressListener) return;
+      console.log("[workers] starting flashAddress poll worker");
+      this.flashAddressWorkerRunning = true;
+      // Run immediately on start, then every 30s
+      await flashStore.claimPending();
+      this.flashAddressListener = setInterval(async () => {
+        await flashStore.claimPending();
+      }, this.flashAddressPollInterval);
+    },
+    stopFlashAddressWorker: function () {
+      if (this.flashAddressListener) {
+        clearInterval(this.flashAddressListener);
+        this.flashAddressListener = null;
+        this.flashAddressWorkerRunning = false;
+        console.log("[workers] stopped flashAddress poll worker");
+      }
     },
   },
 });

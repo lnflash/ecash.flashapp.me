@@ -52,6 +52,7 @@ export default {
       no_lnurl_data: "Nessun dato LNURL",
       no_price_data: "Nessun dato di prezzo.",
       please_try_again: "Si prega di riprovare.",
+      trying_again: "Nuovo tentativo in corso...",
     },
     mint: {
       notifications: {
@@ -1025,7 +1026,8 @@ export default {
         label: "Token non valido",
       },
       p2pk_lock_mismatch: {
-        label: "Impossibile ricevere. Il blocco P2PK di questo token non corrisponde alla tua chiave pubblica.",
+        label:
+          "Impossibile ricevere. Il blocco P2PK di questo token non corrisponde alla tua chiave pubblica.",
       },
     },
     actions: {
@@ -1325,6 +1327,9 @@ export default {
     },
     invoice: {
       title: "Paga { value }",
+      paying: "Pagamento in corso",
+      paid: "Pagato",
+      fee: "Commissione",
       memo: {
         label: "Memo",
       },

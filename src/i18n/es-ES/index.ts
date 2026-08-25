@@ -79,6 +79,7 @@ export default {
       no_lnurl_data: "Sin datos LNURL",
       no_price_data: "Sin datos de precio.",
       please_try_again: "Por favor, inténtelo de nuevo.",
+      trying_again: "Intentando de nuevo...",
     },
     mint: {
       notifications: {
@@ -1055,7 +1056,8 @@ export default {
         label: "Token inválido",
       },
       p2pk_lock_mismatch: {
-        label: "No se puede recibir. El bloqueo P2PK de este token no coincide con su clave pública.",
+        label:
+          "No se puede recibir. El bloqueo P2PK de este token no coincide con su clave pública.",
       },
     },
     actions: {
@@ -1355,6 +1357,9 @@ export default {
     },
     invoice: {
       title: "Pagar { value }",
+      paying: "Pagando",
+      paid: "Pagado",
+      fee: "Tarifa",
       memo: {
         label: "Memo",
       },

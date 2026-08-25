@@ -76,12 +76,18 @@ export default {
       received_lightning: "Received {amount} via Lightning",
       lightning_payment_failed: "Lightning payment failed",
       failed_to_decode_invoice: "Failed to decode invoice",
+      unsupported_legacy_qr: "Unsupported Legacy QR code",
+      legacy_qr_not_supported:
+        "This Legacy QR code is not from a supported merchant",
       invalid_lnurl: "Invalid LNURL",
       lnurl_error: "LNURL Error",
       no_amount: "No amount",
       no_lnurl_data: "No LNURL data",
       no_price_data: "No price data.",
       please_try_again: "Please try again.",
+      trying_again: "Trying again...",
+      no_bolt12_mint: "None of your mints support BOLT12 offers",
+      no_bolt11_mint: "None of your mints support BOLT11 invoices",
     },
     mint: {
       notifications: {
@@ -500,6 +506,15 @@ export default {
           description:
             "Download a dump of your wallet. You can restore your wallet from this file in the welcome screen of a new wallet. This file will be out of sync if you keep using your wallet after exporting it.",
         },
+        import_wallet: {
+          button: "Import wallet backup",
+          description:
+            "Restore your wallet from a previously exported backup file. This will replace your current wallet data with the backup.",
+          confirm_question:
+            "Are you sure you want to restore your wallet data?",
+          cancel: "Cancel",
+          confirm: "IMPORT WALLET BACKUP",
+        },
       },
     },
   },
@@ -791,7 +806,7 @@ export default {
         error: "Failed to read clipboard contents.",
       },
       validate: {
-        error: "Mnemonic should be at least 12 words.",
+        error: "Mnemonic is not a valid BIP39 seed phrase.",
       },
       select_all: {
         label: "Select All",
@@ -1027,6 +1042,8 @@ export default {
     errors: {
       amount_required: "Enter an amount first.",
       serialization_failed: "Could not prepare ecash token.",
+      mint_not_allowed_by_request:
+        "The selected mint is not accepted by this payment request.",
     },
   },
   SendPaymentRequest: {
@@ -1098,7 +1115,8 @@ export default {
         label: "Invalid token",
       },
       p2pk_lock_mismatch: {
-        label: "Unable to receive. This token's P2PK lock doesn't match your public key.",
+        label:
+          "Unable to receive. This token's P2PK lock doesn't match your public key.",
       },
     },
     unknown_mint_info_text:
@@ -1372,6 +1390,7 @@ export default {
   PayInvoiceDialog: {
     input_data: {
       title: "Pay Lightning",
+      title_bolt12: "Pay Lightning Bolt12",
       inputs: {
         invoice_data: {
           label: "Lightning invoice or address",
@@ -1416,6 +1435,9 @@ export default {
     },
     invoice: {
       title: "Pay { value }",
+      paying: "Paying",
+      paid: "Paid",
+      fee: "Fee",
       memo: {
         label: "Memo",
       },

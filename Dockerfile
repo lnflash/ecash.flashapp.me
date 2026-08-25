@@ -1,5 +1,5 @@
 # Stage 1: Build Phase
-FROM node:20.10.0-bullseye AS builder
+FROM node:24 AS builder
 
 WORKDIR /app
 
@@ -12,6 +12,9 @@ RUN npm install
 # Copy the application code to the container
 COPY . .
 
+# Increase Node.js heap size for the build to prevent OOM errors
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+
 # Build the PWA (replace 'npm run build' with your actual build command)
 RUN npm run build:pwa
 
@@ -23,4 +26,3 @@ COPY --from=builder /app/dist/pwa /usr/share/nginx/html
 
 # Expose the port your app will run on
 EXPOSE 80
-

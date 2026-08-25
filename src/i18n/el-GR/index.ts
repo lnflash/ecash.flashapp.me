@@ -79,6 +79,7 @@ export default {
       no_lnurl_data: "Δεν υπάρχουν δεδομένα LNURL",
       no_price_data: "Δεν υπάρχουν δεδομένα τιμής.",
       please_try_again: "Παρακαλώ προσπαθήστε ξανά.",
+      trying_again: "Γίνεται νέα προσπάθεια...",
     },
     mint: {
       notifications: {
@@ -1058,7 +1059,8 @@ export default {
         label: "Μη έγκυρο token",
       },
       p2pk_lock_mismatch: {
-        label: "Δεν είναι δυνατή η λήψη. Το κλείδωμα P2PK αυτού του token δεν ταιριάζει με το δημόσιο κλειδί σας.",
+        label:
+          "Δεν είναι δυνατή η λήψη. Το κλείδωμα P2PK αυτού του token δεν ταιριάζει με το δημόσιο κλειδί σας.",
       },
     },
     actions: {
@@ -1358,6 +1360,9 @@ export default {
     },
     invoice: {
       title: "Πληρωμή { value }",
+      paying: "Πληρώνεται",
+      paid: "Πληρώθηκε",
+      fee: "Χρέωση",
       memo: {
         label: "Σημείωμα",
       },

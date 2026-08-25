@@ -27,10 +27,8 @@
           />
           <div class="col text-center fixed-title-height">
             <q-item-label
-              overline
-              class="q-mt-sm"
+              class="dialog-header q-mt-sm"
               :class="$q.dark.isActive ? 'text-white' : 'text-black'"
-              style="font-size: 1rem"
             >
               {{ $t("SendTokenDialog.title") }}
             </q-item-label>
@@ -79,6 +77,14 @@
             style="max-width: 600px"
           >
             <ChooseMint />
+            <q-banner
+              v-if="paymentRequestMintWarning"
+              dense
+              rounded
+              class="bg-red-1 text-red-9 q-mt-sm"
+            >
+              {{ paymentRequestMintWarning }}
+            </q-banner>
           </div>
         </div>
 
@@ -274,6 +280,7 @@ import { useTokensStore } from "src/stores/tokens";
 import { getShortUrl } from "src/js/wallet-helpers";
 import { useSettingsStore } from "src/stores/settings";
 import { useWorkersStore } from "src/stores/workers";
+import { useInvoicesWorkerStore } from "src/stores/invoicesWorker";
 import { usePriceStore } from "src/stores/price";
 import { useCameraStore } from "src/stores/camera";
 import { useP2PKStore } from "src/stores/p2pk";
@@ -365,7 +372,11 @@ export default defineComponent({
     //       this.activeProofs,
     //       this.sendData.amount * this.activeUnitCurrencyMultiplyer
     //     );
-    //     const mintWallet = useWalletStore().wallet;
+    //     const mints = useMintsStore() as any;
+    //     const mintWallet = this.mintWalletSync(
+    //       mints.activeMintUrl,
+    //       mints.activeUnit
+    //     );
     //     let selectedProofs = this.coinSelect(
     //       spendableProofs,
     //       mintWallet,
@@ -393,6 +404,38 @@ export default defineComponent({
           this.isValidPubkey(this.sendData.p2pkPubkey)
       );
     },
+    // NUT-18's `m` field is mandatory today (cashu-ts `PaymentRequest.mints`
+    // is a plain `string[]`). This constraint helper wraps that so when the
+    // spec change at https://github.com/cashubtc/nuts/pull/381 lands we can
+    // also return `{ kind: "preferred", allowed }` without touching callers:
+    // the button disable + warning logic just keys off `kind`.
+    paymentRequestMintConstraint(): {
+      kind: "mandatory";
+      allowed: string[];
+    } | null {
+      const allowed =
+        this.sendData.paymentRequest?.mints?.filter((m): m is string => !!m) ??
+        [];
+      if (allowed.length === 0) return null;
+      return { kind: "mandatory", allowed };
+    },
+    selectedMintViolatesRequest(): boolean {
+      const c = this.paymentRequestMintConstraint;
+      if (!c) return false;
+      if (!this.activeMintUrl) return true;
+      return !c.allowed.includes(this.activeMintUrl);
+    },
+    paymentRequestMintWarning(): string {
+      // Only block (and warn) for mandatory constraints. Preferred-mint
+      // copy can be added later as a separate i18n key without reshaping
+      // this method.
+      const c = this.paymentRequestMintConstraint;
+      if (!c || c.kind !== "mandatory") return "";
+      if (!this.selectedMintViolatesRequest) return "";
+      return this.$t(
+        "SendTokenDialog.errors.mint_not_allowed_by_request"
+      ) as string;
+    },
     paymentRequestButtonDisabled(): boolean {
       if (!this.sendData.paymentRequest) {
         return true;
@@ -407,10 +450,24 @@ export default defineComponent({
       if (this.globalMutexLock) {
         return true;
       }
+      const c = this.paymentRequestMintConstraint;
+      if (c && c.kind === "mandatory" && this.selectedMintViolatesRequest) {
+        return true;
+      }
       return false;
     },
   },
   watch: {
+    activeMintUrl: function (newUrl, oldUrl) {
+      // When the user switches mint inside the Pay-PaymentRequest sheet, any
+      // proofs we already prepared belong to the previous mint (and embed
+      // that mint URL in the serialized token). Drop them so the next pay
+      // attempt rebuilds from the newly-selected mint.
+      if (!this.showSendTokens) return;
+      if (!this.sendData.paymentRequest) return;
+      if (!newUrl || !oldUrl || newUrl === oldUrl) return;
+      useSendTokensStore().invalidatePreparedPaymentRequestToken();
+    },
     showSendTokens: function (val) {
       if (val) {
         this.$nextTick(() => {
@@ -434,13 +491,13 @@ export default defineComponent({
             );
             return;
           }
-          const unspent = this.checkTokenSpendable(
-            this.sendData.historyToken,
-            false
+          this.addOutgoingTokenToChecker(
+            this.sendData.historyToken.token,
+            true
           );
-          if (!unspent) {
-            this.sendData.historyToken.status = "paid";
-          }
+          this.onTokenPaid(this.sendData.historyToken).catch((error: any) => {
+            console.error("Could not start token status checker", error);
+          });
         }
       } else {
         clearInterval(this.qrInterval);
@@ -453,6 +510,7 @@ export default defineComponent({
   },
   methods: {
     ...mapActions(useWorkersStore, ["clearAllWorkers"]),
+    ...mapActions(useInvoicesWorkerStore, ["addOutgoingTokenToChecker"]),
     ...mapActions(useWalletStore, [
       "send",
       "sendToLock",
@@ -497,7 +555,11 @@ export default defineComponent({
       const sendAmount = Math.floor(
         this.sendData.amount * this.activeUnitCurrencyMultiplyer
       );
-      const mintWallet = this.mintWallet(this.activeMintUrl, this.activeUnit);
+      const mintWallet = await this.mintWallet(
+        this.activeMintUrl,
+        this.activeUnit,
+        true
+      );
       const { sendProofs } = await this.send(
         this.activeProofs,
         mintWallet,
@@ -536,13 +598,17 @@ export default defineComponent({
       if (!this.sendData.amount) {
         throw new Error("Amount is required");
       }
-      let sendAmount = Math.floor(
+      const sendAmount = Math.floor(
         this.sendData.amount * this.activeUnitCurrencyMultiplyer
       );
       try {
         // keep firstProofs, send scndProofs and delete them (invalidate=true)
-        const mintWallet = this.mintWallet(this.activeMintUrl, this.activeUnit);
-        let { _, sendProofs } = await this.sendToLock(
+        const mintWallet = await this.mintWallet(
+          this.activeMintUrl,
+          this.activeUnit,
+          true
+        );
+        const { _, sendProofs } = await this.sendToLock(
           this.activeProofs,
           mintWallet,
           sendAmount,
@@ -585,12 +651,16 @@ export default defineComponent({
       }
 
       try {
-        let sendAmount = Math.floor(
+        const sendAmount = Math.floor(
           this.sendData.amount * this.activeUnitCurrencyMultiplyer
         );
-        const mintWallet = this.mintWallet(this.activeMintUrl, this.activeUnit);
+        const mintWallet = await this.mintWallet(
+          this.activeMintUrl,
+          this.activeUnit,
+          false
+        );
         // keep firstProofs, send scndProofs and delete them (invalidate=true)
-        let { _, sendProofs } = await this.send(
+        const { _, sendProofs } = await this.send(
           this.activeProofs,
           mintWallet,
           sendAmount,

@@ -78,6 +78,7 @@ export default {
       no_lnurl_data: "ไม่มีข้อมูล LNURL",
       no_price_data: "ไม่มีข้อมูลราคา",
       please_try_again: "โปรดลองอีกครั้ง",
+      trying_again: "กำลังลองอีกครั้ง...",
     },
     mint: {
       notifications: {
@@ -1047,7 +1048,8 @@ export default {
         label: "โทเค็นไม่ถูกต้อง",
       },
       p2pk_lock_mismatch: {
-        label: "ไม่สามารถรับได้ คีย์ล็อก P2PK ของโทเค็นนี้ไม่ตรงกับคีย์สาธารณะของคุณ",
+        label:
+          "ไม่สามารถรับได้ คีย์ล็อก P2PK ของโทเค็นนี้ไม่ตรงกับคีย์สาธารณะของคุณ",
       },
     },
     actions: {
@@ -1347,6 +1349,9 @@ export default {
     },
     invoice: {
       title: "ชำระเงิน { value }",
+      paying: "กำลังชำระเงิน",
+      paid: "ชำระแล้ว",
+      fee: "ค่าธรรมเนียม",
       memo: {
         label: "บันทึก",
       },

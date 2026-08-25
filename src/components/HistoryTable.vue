@@ -15,6 +15,10 @@
               v-if="isEcashTransaction(transaction)"
               class="transaction-icon"
             />
+            <BitcoinIcon
+              v-else-if="isOnchainTransaction(transaction)"
+              class="transaction-icon"
+            />
             <ZapIcon v-else class="transaction-icon" />
           </q-avatar>
         </q-item-section>
@@ -160,14 +164,22 @@ import { useReceiveTokensStore } from "src/stores/receiveTokensStore";
 import { useWalletStore } from "src/stores/wallet";
 import { useSendTokensStore } from "src/stores/sendTokensStore";
 import { useUiStore } from "src/stores/ui";
+import { useInvoicesWorkerStore } from "src/stores/invoicesWorker";
 import token from "../js/token";
 import { notify } from "src/js/notify";
-import { Coins as CoinsIcon, Zap as ZapIcon } from "lucide-vue-next";
+import {
+  Bitcoin as BitcoinIcon,
+  Coins as CoinsIcon,
+  Zap as ZapIcon,
+} from "lucide-vue-next";
+import { PaymentMethod, UnifiedTransactionType } from "src/stores/walletTypes";
+import { mintQuoteForHistoryInvoice } from "src/js/invoice-history";
 
 export default defineComponent({
   name: "HistoryTable",
   components: {
     CoinsIcon,
+    BitcoinIcon,
     ZapIcon,
   },
   mixins: [windowMixin],
@@ -234,7 +246,8 @@ export default defineComponent({
       if (this.filterPendingEcash) {
         return this.unifiedTransactions.filter(
           (transaction) =>
-            transaction.status === "pending" && transaction.type === "ecash"
+            transaction.status === "pending" &&
+            transaction.type === UnifiedTransactionType.Ecash
         );
       }
       if (this.filterPending) {
@@ -258,8 +271,16 @@ export default defineComponent({
   methods: {
     ...mapActions(useWalletStore, [
       "checkTokenSpendable",
-      "checkInvoice",
+      "checkInvoiceBolt11",
       "checkOutgoingInvoice",
+      "checkOfferAndMintBolt12",
+      "checkOnchainAndMint",
+    ]),
+    ...mapActions(useInvoicesWorkerStore, [
+      "addInvoiceToChecker",
+      "addBolt12OfferToChecker",
+      "addOutgoingInvoiceToChecker",
+      "addOutgoingTokenToChecker",
     ]),
 
     handleLongPress(transaction) {
@@ -315,25 +336,36 @@ export default defineComponent({
     },
 
     isEcashTransaction(transaction) {
-      return transaction.type === "ecash";
+      return transaction.type === UnifiedTransactionType.Ecash;
     },
 
     isLightningTransaction(transaction) {
-      return transaction.type === "lightning";
+      return transaction.type === UnifiedTransactionType.Lightning;
+    },
+
+    isOnchainTransaction(transaction) {
+      return transaction.type === UnifiedTransactionType.Onchain;
     },
 
     getTransactionIcon(transaction) {
-      return transaction.type === "lightning"
+      return transaction.type === UnifiedTransactionType.Lightning
         ? "flash_on"
         : "account_balance_wallet";
     },
 
     getTransactionIconColor(transaction) {
-      return transaction.type === "lightning" ? "orange" : "blue";
+      return transaction.type === UnifiedTransactionType.Lightning
+        ? "orange"
+        : "blue";
     },
 
     getDefaultLabel(transaction) {
-      return transaction.type === "lightning" ? "Lightning" : "Ecash";
+      if (transaction.type === UnifiedTransactionType.Onchain) {
+        return "On-chain";
+      }
+      return transaction.type === UnifiedTransactionType.Lightning
+        ? "Lightning"
+        : "Ecash";
     },
 
     getTransactionLabel(transaction) {
@@ -341,7 +373,7 @@ export default defineComponent({
     },
 
     checkTransactionStatus(transaction) {
-      if (transaction.type === "ecash") {
+      if (transaction.type === UnifiedTransactionType.Ecash) {
         // If it's an incoming ecash transaction, open receive dialog
         if (transaction.amount > 0) {
           this.receiveToken(transaction.token);
@@ -349,24 +381,50 @@ export default defineComponent({
           // For outgoing ecash transactions, check spendable status
           this.checkTokenSpendable(transaction);
         }
-      } else if (transaction.type === "lightning") {
-        if (transaction.amount > 0) {
-          this.checkInvoice(transaction.quote, true);
-        } else {
+      } else if (transaction.type === UnifiedTransactionType.Onchain) {
+        if (transaction.amount < 0) {
           this.checkOutgoingInvoice(transaction.quote, true);
+        } else if (transaction.method === PaymentMethod.OnchainSubpayment) {
+          this.checkOnchainAndMint(
+            mintQuoteForHistoryInvoice(transaction),
+            true
+          );
+        } else {
+          this.checkOnchainAndMint(transaction.quote, true);
+        }
+      } else if (transaction.type === UnifiedTransactionType.Lightning) {
+        // Prefer explicit type check, fallback to heuristic for old history
+        const isBolt12 =
+          transaction.method === PaymentMethod.Bolt12 ||
+          transaction.method === PaymentMethod.Bolt12Subpayment ||
+          (transaction?.mintQuote &&
+            typeof transaction.mintQuote.amount_paid !== "undefined");
+
+        if (transaction.amount < 0) {
+          this.checkOutgoingInvoice(transaction.quote, true);
+        } else if (isBolt12) {
+          this.checkOfferAndMintBolt12(
+            mintQuoteForHistoryInvoice(transaction),
+            true
+          );
+        } else if (transaction.amount > 0) {
+          this.checkInvoiceBolt11(transaction.quote, true);
         }
       }
     },
 
     showTransactionDialog(transaction) {
-      if (transaction.type === "ecash") {
+      if (transaction.type === UnifiedTransactionType.Ecash) {
         // For pending incoming tokens, open receive dialog instead
         if (transaction.status === "pending" && transaction.amount > 0) {
           this.receiveToken(transaction.token);
         } else {
           this.showTokenDialog(transaction);
         }
-      } else if (transaction.type === "lightning") {
+      } else if (
+        transaction.type === UnifiedTransactionType.Lightning ||
+        transaction.type === UnifiedTransactionType.Onchain
+      ) {
         this.showInvoiceDialog(transaction);
       }
     },
@@ -378,12 +436,15 @@ export default defineComponent({
       }
       const tokensBase64 = historyToken.token;
       console.log("##### showTokenDialog");
-      const tokenObj = token.decode(tokensBase64);
+      const tokenObj = token.decodeMeta(tokensBase64);
       this.sendData.tokens = token.getProofs(tokenObj);
       this.sendData.tokensBase64 = _.clone(tokensBase64);
       this.sendData.paymentRequest = historyToken.paymentRequest;
       this.sendData.historyAmount = historyToken.amount;
       this.sendData.historyToken = historyToken;
+      if (historyToken.status === "pending" && historyToken.amount < 0) {
+        this.addOutgoingTokenToChecker(tokensBase64, true);
+      }
       this.showSendTokens = true;
     },
 
@@ -391,14 +452,49 @@ export default defineComponent({
       this.invoiceData = invoice;
       this.showInvoiceDetails = true;
       if (invoice.status === "pending") {
-        if (invoice.amount > 0) {
+        if (
+          invoice.method === PaymentMethod.Onchain ||
+          invoice.method === PaymentMethod.OnchainSubpayment
+        ) {
+          if (invoice.amount < 0) {
+            this.checkOutgoingInvoice(invoice.quote, false);
+          } else if (invoice.method === PaymentMethod.OnchainSubpayment) {
+            this.checkOnchainAndMint(
+              mintQuoteForHistoryInvoice(invoice),
+              false,
+              false
+            );
+          } else {
+            this.checkOnchainAndMint(invoice.quote, false, false);
+          }
+          return;
+        }
+        const isBolt12 =
+          invoice.method === PaymentMethod.Bolt12 ||
+          invoice.method === PaymentMethod.Bolt12Subpayment ||
+          (invoice?.mintQuote &&
+            typeof invoice.mintQuote.amount_paid !== "undefined");
+
+        if (invoice.amount < 0) {
+          this.addOutgoingInvoiceToChecker(invoice.quote, true);
+          this.checkOutgoingInvoice(invoice.quote, true);
+        } else if (isBolt12) {
+          this.addBolt12OfferToChecker(
+            mintQuoteForHistoryInvoice(invoice),
+            true
+          );
+          this.checkOfferAndMintBolt12(
+            mintQuoteForHistoryInvoice(invoice),
+            false,
+            false
+          );
+        } else if (invoice.amount > 0) {
+          this.addInvoiceToChecker(invoice.quote, true);
           try {
-            await this.checkInvoice(invoice.quote, false, false);
+            await this.checkInvoiceBolt11(invoice.quote, false, false);
           } catch (e) {
             // Handle error
           }
-        } else {
-          this.checkOutgoingInvoice(invoice.quote, true);
         }
       }
     },
@@ -411,7 +507,7 @@ export default defineComponent({
       this.historyTokens.forEach((token) => {
         transactions.push({
           ...token,
-          type: "ecash",
+          type: UnifiedTransactionType.Ecash,
           id: token.id,
           label: token.label,
         });
@@ -421,7 +517,12 @@ export default defineComponent({
       this.invoiceHistory.forEach((invoice) => {
         transactions.push({
           ...invoice,
-          type: "lightning",
+          type:
+            invoice.type === PaymentMethod.Onchain ||
+            invoice.type === PaymentMethod.OnchainSubpayment
+              ? UnifiedTransactionType.Onchain
+              : UnifiedTransactionType.Lightning,
+          method: invoice.type || PaymentMethod.Bolt11,
           id: `invoice-${invoice.quote}`,
           label: invoice.label,
         });

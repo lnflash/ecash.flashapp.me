@@ -1,8 +1,6 @@
 import { defineStore } from "pinia";
 import NDK, {
   NDKEvent,
-  NDKNip07Signer,
-  NDKNip46Signer,
   NDKFilter,
   NDKPrivateKeySigner,
   NDKKind,
@@ -14,8 +12,7 @@ import { nip04, generateSecretKey, getPublicKey } from "nostr-tools";
 import { useMintsStore } from "./mints";
 import { useWalletStore, InvoiceHistory } from "./wallet";
 import { useProofsStore } from "./proofs";
-import { notify, notifyError, notifyWarning } from "../js/notify";
-import { useSettingsStore } from "./settings";
+import { notifyWarning } from "../js/notify";
 import { useNostrStore } from "./nostr";
 import { decode as decodeBolt11 } from "light-bolt11-decoder";
 
@@ -105,7 +102,7 @@ export const useNWCStore = defineStore("nwc", {
       };
     },
     handleGetBalance: async function (nwcCommand: NWCCommand) {
-      const mintsStore = useMintsStore();
+      const mintsStore = useMintsStore() as any;
       console.log("### get_balance", nwcCommand.method);
       return {
         result_type: "get_balance",
@@ -166,7 +163,7 @@ export const useNWCStore = defineStore("nwc", {
         const paidAmount =
           walletStore.payInvoiceData.meltQuote.response.amount +
           walletStore.payInvoiceData.meltQuote.response.fee_reserve -
-          proofsStore.sumProofs(meltData.change);
+          proofsStore.sumProofs(meltData.change ?? []);
         this.connections[0].allowanceLeft -= paidAmount;
         return {
           result_type: nwcCommand.method,
@@ -189,14 +186,12 @@ export const useNWCStore = defineStore("nwc", {
       console.log("### expiry", expiry); // seconds
       // make invoice
       const walletStore = useWalletStore();
-      const quote = await walletStore.requestMint(
-        amount / 1000,
-        walletStore.wallet
-      );
+      const wallet = await walletStore.activeWallet();
+      const quote = await walletStore.requestMintBolt11(amount / 1000, wallet);
       if (!quote) {
         // requesting mint invoice can fail if no mint was selected yet
         // the error will have been shown as a notification
-        // TODO: make requestMint throw and return useful message
+        // TODO: make requestMintBolt11 throw and return useful message
         return {
           result_type: nwcCommand.method,
           error: {
@@ -206,7 +201,7 @@ export const useNWCStore = defineStore("nwc", {
         };
       }
 
-      walletStore.mintOnPaid(quote.quote, false, true);
+      walletStore.mintOnPaidBolt11(quote.quote, false, true);
 
       return {
         result_type: nwcCommand.method,
@@ -312,16 +307,16 @@ export const useNWCStore = defineStore("nwc", {
       };
     },
     mapToNwcTransaction(invoice: InvoiceHistory): NWCTransaction {
-      let type = invoice.amount > 0 ? "incoming" : "outgoing";
-      let amount = Math.abs(invoice.amount) * 1000;
-      let created_at = Math.floor(new Date(invoice.date).getTime() / 1000);
-      let settled_at =
+      const type = invoice.amount > 0 ? "incoming" : "outgoing";
+      const amount = Math.abs(invoice.amount) * 1000;
+      const created_at = Math.floor(new Date(invoice.date).getTime() / 1000);
+      const settled_at =
         invoice.status == "paid"
           ? Math.floor(new Date(invoice.date).getTime() / 1000)
           : null;
       return {
         type: type,
-        invoice: invoice.bolt11,
+        invoice: invoice.request,
         description: invoice.memo,
         amount: amount,
         fees_paid: 0,
@@ -336,7 +331,7 @@ export const useNWCStore = defineStore("nwc", {
       conn: NWCConnection
     ) {
       // reply to NWC with result
-      let replyEvent = new NDKEvent(event.ndk);
+      const replyEvent = new NDKEvent(event.ndk);
       replyEvent.kind = 23195;
       console.log("### replying with", JSON.stringify(result));
       replyEvent.content = await nip04.encrypt(
@@ -359,7 +354,7 @@ export const useNWCStore = defineStore("nwc", {
       conn: NWCConnection
     ) {
       // parse command to JSON object {method: 'pay_invoice', params: {invoice: '1234'}}
-      let nwcCommand: NWCCommand = JSON.parse(command);
+      const nwcCommand: NWCCommand = JSON.parse(command);
       let result: NWCResult | NWCError;
       console.log("### nwcCommand", nwcCommand);
       // parse "get_info" without params
@@ -441,17 +436,17 @@ export const useNWCStore = defineStore("nwc", {
       });
       this.ndk.connect();
 
-      const nip47InfoEvent = new NDKEvent(this.ndk);
+      const nip47InfoEvent = new NDKEvent(this.ndk as NDK);
       nip47InfoEvent.kind = NWCKind.NWCInfo;
       nip47InfoEvent.content = this.supportedMethods.join(" ");
       try {
         // let's fetch the info event from the relay to see if we need to republish it
         // use NWCKind.NWCInfo as an integer here
-        let filterInfoEvent: NDKFilter = {
+        const filterInfoEvent: NDKFilter = {
           kinds: [NWCKind.NWCInfo],
           authors: [conn.walletPublicKey],
         };
-        let eventsInfoEvent = await this.ndk.fetchEvents(filterInfoEvent);
+        const eventsInfoEvent = await this.ndk.fetchEvents(filterInfoEvent);
         if (eventsInfoEvent.size === 0) {
           await nip47InfoEvent.publish();
           console.log("### published nip47InfoEvent", nip47InfoEvent);
@@ -473,7 +468,7 @@ export const useNWCStore = defineStore("nwc", {
 
       const currentUnitTime = Math.floor(Date.now() / 1000);
       const subscribeSince = currentUnitTime - 60; // 1 minute
-      let filter = {
+      const filter = {
         kinds: [NWCKind.NWCRequest as NDKKind],
         since: subscribeSince,
         authors: [conn.connectionPublicKey],
@@ -523,7 +518,7 @@ export const useNWCStore = defineStore("nwc", {
     },
     unsubscribeNWC: function () {
       console.log("### unsubscribing from NWC");
-      for (let sub of this.subscriptions) {
+      for (const sub of this.subscriptions) {
         sub.stop();
       }
       this.subscriptions = [];

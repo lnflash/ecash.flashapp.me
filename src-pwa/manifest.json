@@ -1,11 +1,11 @@
 {
-  "name": "Cashu.me",
-  "short_name": "Cashu.me",
-  "description": "A Cashu Ecash wallet for the web.",
+  "name": "Flash Ecash",
+  "short_name": "Flash",
+  "description": "Flash Ecash wallet — send and receive with your Flash Address.",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#0a0a0a",
+  "theme_color": "#41AD49",
   "protocol_handlers": [
     {
       "protocol": "web+cashu",

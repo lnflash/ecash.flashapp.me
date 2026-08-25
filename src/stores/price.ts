@@ -45,14 +45,16 @@ export const usePriceStore = defineStore("price", {
         return;
       }
       try {
-        var { data } = await axios.get(
+        const { data } = await axios.get(
           "https://api.coinbase.com/v2/exchange-rates?currency=BTC"
         );
         this.bitcoinPrices = data.data.rates;
         // Update the main bitcoinPrice to current selected currency for backward compatibility
         this.bitcoinPrice =
-          data.data.rates[settingsStore.bitcoinPriceCurrency] ||
-          data.data.rates.USD;
+          parseFloat(
+            data.data.rates[settingsStore.bitcoinPriceCurrency] ||
+              data.data.rates.USD
+          ) || 0;
         this.bitcoinPriceLastUpdated = Date.now();
       } catch (error) {
         console.error("Failed to fetch bitcoin price:", error);

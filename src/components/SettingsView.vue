@@ -1,5 +1,5 @@
 <template>
-  <div style="max-width: 800px; margin: 0 auto">
+  <div class="settings-view" style="max-width: 800px; margin: 0 auto">
     <!-- BACKUP & RESTORE SECTION -->
     <div class="section-divider q-my-md">
       <div class="divider-line"></div>
@@ -1644,32 +1644,40 @@
                       }}
                     </q-item-label>
                   </row>
-                  <row class="q-pa-sm">
-                    <row
-                      class="q-px-sm"
+                  <div class="keyset-counters q-pa-sm">
+                    <div
+                      class="keyset-counter-group q-px-sm"
                       v-for="(mintCounter, mintUrl) in keysetCountersByMint"
                       :key="mintUrl"
                     >
-                      <q-item-label class="q-px-xs" caption>
+                      <q-item-label class="keyset-mint-label q-px-xs" caption>
                         {{ shortUrl(mintUrl) }}
                       </q-item-label>
                       <q-btn
+                        class="keyset-counter-btn"
                         dense
                         v-for="(counter, id) in mintCounter"
                         :key="id"
                         flat
                         click
+                        :title="counter.id"
                         @click="increaseKeysetCounter(counter.id, 1)"
-                        >{{ counter.id }} -
-                        {{
-                          $t(
-                            "Settings.advanced.developer.keyset_counters.counter",
-                            { count: counter.counter }
-                          )
-                        }}
+                      >
+                        <span class="keyset-id">{{
+                          abbreviateKeysetId(counter.id)
+                        }}</span>
+                        <span class="keyset-counter-separator">-</span>
+                        <span class="keyset-counter-text">
+                          {{
+                            $t(
+                              "Settings.advanced.developer.keyset_counters.counter",
+                              { count: counter.counter }
+                            )
+                          }}
+                        </span>
                       </q-btn>
-                    </row>
-                  </row>
+                    </div>
+                  </div>
                 </q-item-section>
               </q-item>
               <q-item>
@@ -1775,6 +1783,70 @@
               <q-item>
                 <q-item-section>
                   <row>
+                    <q-btn
+                      v-if="!confirmImport"
+                      dense
+                      flat
+                      outline
+                      click
+                      @click="confirmImport = !confirmImport"
+                    >
+                      {{
+                        $t("Settings.advanced.developer.import_wallet.button")
+                      }}
+                    </q-btn>
+                  </row>
+                  <row v-if="!confirmImport">
+                    <q-item-label class="q-px-sm" caption
+                      >{{
+                        $t(
+                          "Settings.advanced.developer.import_wallet.description"
+                        )
+                      }}
+                    </q-item-label>
+                  </row>
+                  <row v-if="confirmImport">
+                    <span>{{
+                      $t(
+                        "Settings.advanced.developer.import_wallet.confirm_question"
+                      )
+                    }}</span>
+                    <q-btn
+                      flat
+                      dense
+                      class="q-ml-sm"
+                      color="primary"
+                      @click="confirmImport = false"
+                      >{{
+                        $t("Settings.advanced.developer.import_wallet.cancel")
+                      }}</q-btn
+                    >
+                    <q-btn
+                      flat
+                      dense
+                      class="q-ml-sm"
+                      color="warning"
+                      @click="
+                        confirmImport = false;
+                        browseBackupFile();
+                      "
+                      >{{
+                        $t("Settings.advanced.developer.import_wallet.confirm")
+                      }}</q-btn
+                    >
+                  </row>
+                  <input
+                    type="file"
+                    ref="fileUpload"
+                    accept=".json"
+                    style="display: none"
+                    @change="onChangeFileUpload"
+                  />
+                </q-item-section>
+              </q-item>
+              <q-item>
+                <q-item-section>
+                  <row>
                     <q-btn dense flat outline click @click="exportWalletState">
                       {{
                         $t("Settings.advanced.developer.export_wallet.button")
@@ -1864,6 +1936,8 @@ export default defineComponent({
         { label: "Italiano", value: "it-IT" },
         { label: "Deutsch", value: "de-DE" },
         { label: "Français", value: "fr-FR" },
+        { label: "Čeština", value: "cs-CZ" },
+        { label: "Português (Brasil)", value: "pt-BR" },
         { label: "Svenska", value: "sv-SE" },
         { label: "Ελληνικά", value: "el-GR" },
         { label: "Türkçe", value: "tr-TR" },
@@ -1905,6 +1979,7 @@ export default defineComponent({
       hideMnemonic: true,
       confirmMnemonic: false,
       confirmNuke: false,
+      confirmImport: false,
       nip46Token: "",
       nip07SignerAvailable: false,
       newRelay: "",
@@ -1985,7 +2060,7 @@ export default defineComponent({
     keysetCountersByMint() {
       const mints = this.mints;
       const keysetCountersByMint = {}; // {mintUrl: [keysetCounter: {id: string, count: number}, ...]}
-      for (let mint of mints) {
+      for (const mint of mints) {
         const mintIds = mint.keysets.map((keyset) => keyset.id);
         const keysetCounterThisMint = this.keysetCounters.filter((entry) =>
           mintIds.includes(entry.id)
@@ -2113,6 +2188,13 @@ export default defineComponent({
     shortUrl: function (url) {
       return getShortUrl(url);
     },
+    abbreviateKeysetId: function (id) {
+      const value = String(id || "");
+      if (value.length <= 24) {
+        return value;
+      }
+      return `${value.slice(0, 8)}...${value.slice(-8)}`;
+    },
     toggleMnemonicVisibility: function () {
       this.hideMnemonic = !this.hideMnemonic;
     },
@@ -2127,21 +2209,21 @@ export default defineComponent({
     },
     checkActiveProofsSpendable: async function () {
       // iterate over this.activeProofs in batches of 50 and check if they are spendable
-      let wallet = useWalletStore().mintWallet(
+      const wallet = await useWalletStore().mintWallet(
         this.activeMintUrl,
         this.activeUnit
       );
-      let proofs = this.activeProofs.flat();
+      const proofs = this.activeProofs.flat();
       console.log("Checking proofs", proofs);
-      let allSpentProofs = [];
-      let batch_size = 50;
+      const allSpentProofs = [];
+      const batch_size = 50;
       for (let i = 0; i < proofs.length; i += batch_size) {
         console.log("Checking proofs", i, i + batch_size);
-        let batch = proofs.slice(i, i + batch_size);
-        let spent = await this.checkProofsSpendable(batch, wallet, true);
+        const batch = proofs.slice(i, i + batch_size);
+        const spent = await this.checkProofsSpendable(batch, wallet, true);
         allSpentProofs.push(spent);
       }
-      let spentProofs = allSpentProofs.flat();
+      const spentProofs = allSpentProofs.flat();
       if (spentProofs.length > 0) {
         console.log("Spent proofs", spentProofs);
         this.notifySuccess("Removed " + spentProofs.length + " spent proofs");
@@ -2233,6 +2315,32 @@ export default defineComponent({
       localStorage.clear();
       window.location.href = "/";
     },
+    browseBackupFile: function () {
+      this.$refs.fileUpload.click();
+    },
+    onChangeFileUpload: function () {
+      const file = this.$refs.fileUpload.files[0];
+      if (file) {
+        this.readBackupFile(file);
+      }
+    },
+    readBackupFile: function (file) {
+      const reader = new FileReader();
+      reader.onload = (f) => {
+        try {
+          const content = f.target.result;
+          const backup = JSON.parse(content);
+          this.restoreFromBackup(backup);
+        } catch (error) {
+          console.error("Error reading backup file:", error);
+          this.notifyError("Invalid backup file format");
+        }
+      };
+      reader.onerror = () => {
+        this.notifyError("Error reading file");
+      };
+      reader.readAsText(file);
+    },
     addRelay: function () {
       if (this.newRelay) {
         this.newRelay = this.newRelay.trim();
@@ -2315,6 +2423,72 @@ export default defineComponent({
 });
 </script>
 <style>
+.settings-view {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.settings-view,
+.settings-view * {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.settings-view .q-item,
+.settings-view .q-item__section,
+.settings-view .q-field,
+.settings-view .q-btn,
+.settings-view .q-btn__content {
+  max-width: 100%;
+}
+
+.settings-view .q-item__label,
+.settings-view .q-field__native,
+.settings-view .q-field__input,
+.settings-view .q-btn__content {
+  overflow-wrap: anywhere;
+}
+
+.settings-view .q-btn__content {
+  white-space: normal;
+}
+
+.keyset-counters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.keyset-counter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.keyset-mint-label {
+  flex: 0 1 100%;
+}
+
+.keyset-counter-btn {
+  min-height: 28px;
+}
+
+.keyset-id {
+  font-family: monospace;
+  overflow-wrap: normal;
+}
+
+.keyset-counter-separator {
+  margin: 0 4px;
+}
+
+.keyset-counter-text {
+  min-width: 0;
+}
+
 /* Section Divider */
 .section-divider {
   display: flex;

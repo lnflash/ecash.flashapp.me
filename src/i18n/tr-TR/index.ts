@@ -83,6 +83,7 @@ export default {
       no_lnurl_data: "LNURL verisi yok",
       no_price_data: "Fiyat verisi yok.",
       please_try_again: "Lütfen tekrar deneyin.",
+      trying_again: "Tekrar deneniyor...",
     },
     mint: {
       notifications: {
@@ -1062,7 +1063,8 @@ export default {
         label: "Geçersiz token",
       },
       p2pk_lock_mismatch: {
-        label: "Alınamıyor. Bu token'ın P2PK kilidi genel anahtarınızla eşleşmiyor.",
+        label:
+          "Alınamıyor. Bu token'ın P2PK kilidi genel anahtarınızla eşleşmiyor.",
       },
     },
     actions: {
@@ -1362,6 +1364,9 @@ export default {
     },
     invoice: {
       title: "{ value } öde",
+      paying: "Ödeniyor",
+      paid: "Ödendi",
+      fee: "Ücret",
       memo: {
         label: "Memo",
       },

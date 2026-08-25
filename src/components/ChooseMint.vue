@@ -164,14 +164,16 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue";
+import { defineComponent, type PropType } from "vue";
 import { getShortUrl } from "src/js/wallet-helpers";
 import { mapActions, mapState, mapWritableState } from "pinia";
 import { useMintsStore } from "stores/mints";
 import { MintClass } from "stores/mints";
-import type { Mint } from "stores/mints";
+import type { StoredMint } from "stores/mints";
 import { useUiStore } from "stores/ui";
 import { i18n } from "../boot/i18n";
+import { mintSupportsPaymentMethod } from "src/js/mint-payment-methods";
+import { PaymentMethod } from "src/stores/walletTypes";
 
 declare const windowMixin: any;
 
@@ -230,6 +232,14 @@ export default defineComponent({
       type: String,
       default: null,
     },
+    filterPaymentMethod: {
+      type: [String, Array] as PropType<PaymentMethod | PaymentMethod[] | null>,
+      default: null,
+    },
+    filterMintOperation: {
+      type: String as () => "mint" | "melt",
+      default: "mint",
+    },
   },
   emits: ["update:modelValue"],
   data: function () {
@@ -248,8 +258,9 @@ export default defineComponent({
         this.$emit("update:modelValue", selectedUrl);
       }
       if (this.modelValue === null && !this.dryRun) {
-        // Use the original behavior when not using v-model
-        (this.activeMintUrl as unknown as string) = selectedUrl;
+        if (selectedUrl && selectedUrl !== this.activeMintUrl) {
+          this.selectMintUrl(selectedUrl);
+        }
       }
     },
     modelValue: {
@@ -261,12 +272,21 @@ export default defineComponent({
     activeMintUrl: {
       handler() {
         if (this.modelValue === null) {
-          this.initializeChosenMint();
+          this.initializeChosenMint(true);
         }
       },
     },
     excludeMint() {
       this.initializeChosenMint();
+    },
+    filterPaymentMethod() {
+      this.initializeChosenMint();
+    },
+    filterMintOperation() {
+      this.initializeChosenMint();
+    },
+    activeUnit() {
+      this.initializeChosenMint(true);
     },
   },
   computed: {
@@ -280,9 +300,17 @@ export default defineComponent({
       const balance = this.chosenMint.balances?.[unit];
       return typeof balance === "number" ? balance : 0;
     },
+    filterPaymentMethods(): PaymentMethod[] {
+      if (!this.filterPaymentMethod) {
+        return [];
+      }
+      return Array.isArray(this.filterPaymentMethod)
+        ? this.filterPaymentMethod
+        : [this.filterPaymentMethod];
+    },
   },
   methods: {
-    ...mapActions(useMintsStore, ["activateMintUrl"]),
+    ...mapActions(useMintsStore, ["selectMintUrl"]),
     formatCurrency(value: number, currency: string) {
       return useUiStore().formatCurrency(value, currency);
     },
@@ -297,7 +325,7 @@ export default defineComponent({
         units: [...option.units],
       };
     },
-    initializeChosenMint() {
+    initializeChosenMint(preferActiveMint = false) {
       const options = this.chooseMintOptions();
       const fallbackUrl =
         this.chosenMint?.url && this.chosenMint.url !== this.excludeMint
@@ -306,6 +334,8 @@ export default defineComponent({
       let targetUrl =
         this.modelValue !== null
           ? this.modelValue
+          : preferActiveMint
+          ? this.activeMintUrl || fallbackUrl
           : fallbackUrl || this.activeMintUrl;
       if (targetUrl && targetUrl === this.excludeMint) {
         targetUrl = "";
@@ -335,9 +365,22 @@ export default defineComponent({
     chooseMintOptions: function () {
       const options: MintOption[] = [];
       const availableMints = Array.isArray(this.mints)
-        ? (this.mints as Mint[])
+        ? (this.mints as StoredMint[])
         : [];
       for (const mintData of availableMints) {
+        if (
+          this.filterPaymentMethods.length &&
+          !this.filterPaymentMethods.some((method) =>
+            mintSupportsPaymentMethod(
+              mintData,
+              method,
+              this.filterMintOperation,
+              this.activeUnit
+            )
+          )
+        ) {
+          continue;
+        }
         const all_units = mintData.keysets.map((r) => r.unit);
         const units = [...new Set(all_units)];
         const mint = new MintClass(mintData);

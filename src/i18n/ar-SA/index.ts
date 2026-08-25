@@ -77,6 +77,7 @@ export default {
       no_lnurl_data: "لا توجد بيانات LNURL",
       no_price_data: "لا توجد بيانات سعرية.",
       please_try_again: "يرجى المحاولة مرة أخرى.",
+      trying_again: "جارٍ إعادة المحاولة...",
     },
     mint: {
       notifications: {
@@ -1045,7 +1046,8 @@ export default {
         label: "رمز غير صالح",
       },
       p2pk_lock_mismatch: {
-        label: "غير قادر على الاستلام. قفل P2PK لهذا الرمز لا يطابق المفتاح العام الخاص بك.",
+        label:
+          "غير قادر على الاستلام. قفل P2PK لهذا الرمز لا يطابق المفتاح العام الخاص بك.",
       },
     },
     actions: {
@@ -1344,6 +1346,9 @@ export default {
     },
     invoice: {
       title: "دفع { value }",
+      paying: "جاري الدفع",
+      paid: "تم الدفع",
+      fee: "الرسوم",
       memo: {
         label: "مذكرة",
       },

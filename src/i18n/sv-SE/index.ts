@@ -77,6 +77,7 @@ export default {
       no_lnurl_data: "Ingen LNURL-data",
       no_price_data: "Ingen prisdata.",
       please_try_again: "Försök igen.",
+      trying_again: "Försöker igen...",
     },
     mint: {
       notifications: {
@@ -1051,7 +1052,8 @@ export default {
         label: "Ogiltig token",
       },
       p2pk_lock_mismatch: {
-        label: "Kan inte ta emot. Denna tokens P2PK-lås matchar inte din publika nyckel.",
+        label:
+          "Kan inte ta emot. Denna tokens P2PK-lås matchar inte din publika nyckel.",
       },
     },
     actions: {
@@ -1351,6 +1353,9 @@ export default {
     },
     invoice: {
       title: "Betala { value }",
+      paying: "Betalar",
+      paid: "Betald",
+      fee: "Avgift",
       memo: {
         label: "Memo",
       },

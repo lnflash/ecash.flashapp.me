@@ -78,6 +78,7 @@ export default {
       no_lnurl_data: "没有LNURL数据",
       no_price_data: "没有价格数据。",
       please_try_again: "请重试。",
+      trying_again: "正在重试...",
     },
     mint: {
       notifications: {
@@ -1342,6 +1343,9 @@ export default {
     },
     invoice: {
       title: "支付 { value }",
+      paying: "支付中",
+      paid: "已支付",
+      fee: "费用",
       memo: {
         label: "备忘录",
       },

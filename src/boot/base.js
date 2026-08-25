@@ -116,8 +116,8 @@ window.windowMixin = {
       updateStatusBarMeta();
     },
     copyText: function (text, message, position) {
-      let notify = this.$q.notify;
-      let i18n = this.$i18n;
+      const notify = this.$q.notify;
+      const i18n = this.$i18n;
       copyToClipboard(text).then(function () {
         notify({
           message:
@@ -149,10 +149,18 @@ window.windowMixin = {
       if (currency == "msat") return this.fromMsat(value);
       if (currency == "usd") value = value / 100;
       if (currency == "eur") value = value / 100;
-      return new Intl.NumberFormat(window.LOCALE, {
-        style: "currency",
-        currency: currency,
-      }).format(value);
+      try {
+        return new Intl.NumberFormat(window.LOCALE, {
+          style: "currency",
+          currency: currency,
+        }).format(value);
+      } catch {
+        return (
+          new Intl.NumberFormat(window.LOCALE).format(value) +
+          " " +
+          String(currency)
+        );
+      }
       // + " " +
       // currency.toUpperCase()
     },
@@ -175,7 +183,7 @@ window.windowMixin = {
       return new Intl.NumberFormat(window.LOCALE).format(value) + " msat";
     },
     notifyApiError: function (error) {
-      var types = {
+      const types = {
         400: "warning",
         401: "warning",
         500: "negative",
@@ -304,7 +312,7 @@ window.windowMixin = {
 
     // addEventListener("beforeunload", (event) => {
     //   event.preventDefault();
-    //   var dialogText = "Are you sure about this?";
+    //   const dialogText = "Are you sure about this?";
     //   event.returnValue = dialogText;
     //   return dialogText;
     // });

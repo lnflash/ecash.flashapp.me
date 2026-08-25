@@ -80,6 +80,7 @@ export default {
       no_lnurl_data: "Keine LNURL-Daten",
       no_price_data: "Keine Preisdaten.",
       please_try_again: "Bitte versuchen Sie es erneut.",
+      trying_again: "Wird erneut versucht...",
     },
     mint: {
       notifications: {
@@ -1061,7 +1062,8 @@ export default {
         label: "Ungültiger Token",
       },
       p2pk_lock_mismatch: {
-        label: "Kann nicht empfangen werden. Die P2PK-Sperre dieses Tokens stimmt nicht mit Ihrem öffentlichen Schlüssel überein.",
+        label:
+          "Kann nicht empfangen werden. Die P2PK-Sperre dieses Tokens stimmt nicht mit Ihrem öffentlichen Schlüssel überein.",
       },
     },
     actions: {
@@ -1361,6 +1363,9 @@ export default {
     },
     invoice: {
       title: "{ value } bezahlen",
+      paying: "Wird bezahlt",
+      paid: "Bezahlt",
+      fee: "Gebühr",
       memo: {
         label: "Memo",
       },

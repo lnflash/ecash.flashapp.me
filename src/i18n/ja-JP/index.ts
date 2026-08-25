@@ -77,6 +77,7 @@ export default {
       no_lnurl_data: "LNURLデータがありません",
       no_price_data: "価格データがありません。",
       please_try_again: "もう一度お試しください。",
+      trying_again: "再試行中...",
     },
     mint: {
       notifications: {
@@ -1047,7 +1048,8 @@ export default {
         label: "無効なトークン",
       },
       p2pk_lock_mismatch: {
-        label: "受信できません。このトークンのP2PKロックがあなたの公開鍵と一致しません。",
+        label:
+          "受信できません。このトークンのP2PKロックがあなたの公開鍵と一致しません。",
       },
     },
     actions: {
@@ -1348,6 +1350,9 @@ export default {
     },
     invoice: {
       title: "{ value }を支払う",
+      paying: "支払い中",
+      paid: "支払い済み",
+      fee: "手数料",
       memo: {
         label: "メモ",
       },

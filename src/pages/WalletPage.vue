@@ -203,6 +203,7 @@
 import { date } from "quasar";
 import * as _ from "underscore";
 import { shortenString } from "src/js/string-utils";
+import { sumProofAmounts } from "src/js/proofs";
 import token from "src/js/token";
 
 // Vue components
@@ -235,8 +236,11 @@ import { useProofsStore } from "src/stores/proofs";
 import { useCameraStore } from "src/stores/camera";
 import { useP2PKStore } from "src/stores/p2pk";
 import { useNWCStore } from "src/stores/nwc";
+// @ts-ignore
 import { useNPCStore } from "src/stores/npubcash";
 import { useNPCV2Store } from "src/stores/npcv2";
+import { useFlashAddressStore } from "src/stores/flashAddress";
+import FlashShell from "components/FlashShell.vue";
 import { useNostrStore } from "src/stores/nostr";
 import { usePRStore } from "src/stores/payment-request";
 import { useDexieStore } from "src/stores/dexie";
@@ -255,6 +259,9 @@ import {
 } from "lucide-vue-next";
 
 import { useMigrationsStore } from "src/stores/migrations";
+
+declare const windowMixin: any;
+declare const GIT_COMMIT: string;
 
 export default {
   mixins: [windowMixin],
@@ -282,24 +289,9 @@ export default {
       name: "",
       mintId: "",
       mintName: "",
-      deferredPWAInstallPrompt: null,
+      deferredPWAInstallPrompt: null as any,
       action: "main",
-      parse: {
-        show: false,
-        invoice: null,
-        lnurlpay: null,
-        lnurlauth: null,
-        data: {
-          request: "",
-          amount: 0,
-          comment: "",
-        },
-        camera: {
-          show: false,
-          camera: "auto",
-        },
-      },
-      payments: [],
+      payments: [] as any[],
       paymentsChart: {
         show: false,
       },
@@ -316,6 +308,7 @@ export default {
     ...mapState(useUiStore, ["tickerShort"]),
     ...mapWritableState(useUiStore, [
       "showInvoiceDetails",
+      "showBolt12OfferDetails",
       "showCreateInvoiceDialog",
       "tab",
       "showSendDialog",
@@ -354,13 +347,9 @@ export default {
     },
 
     balance: function () {
-      return this.activeProofs
-        .map((t) => t)
-        .flat()
-        .reduce((sum, el) => (sum += el.amount), 0);
+      return sumProofAmounts(this.activeProofs.flat());
     },
   },
-  filters: {},
   methods: {
     ...mapActions(useProofsStore, [
       "serializeProofs",
@@ -378,7 +367,12 @@ export default {
       "setProofs",
       "getKeysForKeyset",
     ]),
-    ...mapActions(useWorkersStore, ["clearAllWorkers", "invoiceCheckWorker"]),
+    ...mapActions(useWorkersStore, [
+      "clearAllWorkers",
+      "invoiceCheckWorker",
+      "startFlashAddressWorker",
+      "stopFlashAddressWorker",
+    ]),
     ...mapActions(useTokensStore, ["setTokenPaid"]),
     ...mapActions(useWalletStore, [
       "setInvoicePaid",
@@ -410,13 +404,6 @@ export default {
       "checkPendingInvoices",
     ]),
     // TOKEN METHODS
-    decodeToken: function (encoded_token) {
-      try {
-        return token.decode(encoded_token);
-      } catch (e) {
-        return null;
-      }
-    },
     getProofs: function (decoded_token) {
       return token.getProofs(decoded_token);
     },
@@ -429,7 +416,7 @@ export default {
     },
     getTokenList: function () {
       const amounts = this.activeProofs.map((t) => t.amount);
-      const counts = {};
+      const counts = {} as any;
 
       for (const num of amounts) {
         counts[num] = counts[num] ? counts[num] + 1 : 1;
@@ -437,7 +424,7 @@ export default {
       return Object.keys(counts).map((k) => ({
         value: parseInt(k),
         count: parseInt(counts[k]),
-        sum: k * counts[k],
+        sum: Number(k) * counts[k],
       }));
     },
 
@@ -447,7 +434,7 @@ export default {
     showChart: function () {
       this.paymentsChart.show = true;
       this.$nextTick(() => {
-        generateChart(this.$refs.canvas, this.payments);
+        // generateChart(this.$refs.canvas, this.payments);
       });
     },
     focusInput(el) {
@@ -487,7 +474,7 @@ export default {
     showInvoiceCreateDialog: async function () {
       console.log("##### showInvoiceCreateDialog");
       this.invoiceData.amount = "";
-      this.invoiceData.bolt11 = "";
+      this.invoiceData.request = "";
       this.invoiceData.hash = "";
       this.invoiceData.memo = "";
       this.showCreateInvoiceDialog = true;
@@ -532,9 +519,10 @@ export default {
       const isStandalone = window.matchMedia(
         "(display-mode: standalone)"
       ).matches;
+      // @ts-ignore
       if (document.referrer.startsWith("android-app://")) {
         return "twa";
-      } else if (navigator.standalone || isStandalone) {
+      } else if ((navigator as any).standalone || isStandalone) {
         return "standalone";
       }
       return "browser";
@@ -547,6 +535,7 @@ export default {
       this.deferredPWAInstallPrompt.userChoice.then((choiceResult) => {
         if (choiceResult.outcome === "accepted") {
           console.log("User accepted the install prompt");
+          // @ts-ignore
           this.setWelcomeDialogSeen();
         } else {
           console.log("User dismissed the install prompt");
@@ -583,18 +572,18 @@ export default {
         if (actionBtns.length >= 2) {
           // Reset widths first
           actionBtns.forEach((btn) => {
-            btn.style.width = "auto";
+            (btn as HTMLElement).style.width = "auto";
           });
 
           // Get the maximum width
           let maxWidth = 0;
           actionBtns.forEach((btn) => {
-            maxWidth = Math.max(maxWidth, btn.offsetWidth);
+            maxWidth = Math.max(maxWidth, (btn as HTMLElement).offsetWidth);
           });
 
           // Apply the maximum width to all buttons
           actionBtns.forEach((btn) => {
-            btn.style.width = `${maxWidth}px`;
+            (btn as HTMLElement).style.width = `${maxWidth}px`;
           });
         }
       });
@@ -607,6 +596,11 @@ export default {
     this.generateNPCConnection();
     this.claimAllTokens();
     this.generateNPCV2Connection();
+    // Flash Address: start background poll worker if address is configured
+    const flashStore = useFlashAddressStore();
+    if (flashStore.enabled) {
+      this.startFlashAddressWorker();
+    }
     this.getLatestQuotes();
     // Ensure wallet action buttons have equal width
     this.$nextTick(this.equalizeButtonWidths);
@@ -620,7 +614,17 @@ export default {
   },
 
   created: async function () {
-    console.log(`Git commit: ${GIT_COMMIT}`);
+    // @ts-ignore
+    if (typeof GIT_COMMIT !== "undefined") {
+      console.log(`Git commit: ${GIT_COMMIT}`);
+    }
+
+    // Redirect to /setup on first visit (before anything else loads)
+    const SETUP_DONE_KEY = "cashu.flash.setupDone";
+    if (!localStorage.getItem(SETUP_DONE_KEY)) {
+      this.$router.replace("/setup");
+      return;
+    }
 
     // Initialize and run migrations
     const migrationsStore = useMigrationsStore();
@@ -630,12 +634,12 @@ export default {
     // check if another tab is open
     this.registerBroadcastChannel();
 
-    let params = new URL(document.location).searchParams;
-    let hash = new URL(document.location).hash;
+    const params = new URL(document.location as any).searchParams;
+    const hash = new URL(document.location as any).hash;
 
     // mint url
     if (params.get("mint")) {
-      let addMintUrl = params.get("mint");
+      const addMintUrl = params.get("mint") as string;
       await this.setTab("mints");
       this.showAddMintDialog = true;
       this.addMintData = { url: addMintUrl };
@@ -649,11 +653,12 @@ export default {
 
     // get token to receive tokens from a link
     if (params.get("token") || hash.includes("token")) {
-      let tokenBase64 = params.get("token") || hash.split("token=")[1];
+      const tokenBase64 = (params.get("token") ||
+        hash.split("token=")[1]) as string;
       // make sure to react only to tokens not in the users history
       let seen = false;
-      for (var i = 0; i < this.historyTokens.length; i++) {
-        var thisToken = this.historyTokens[i].token;
+      for (let i = 0; i < this.historyTokens.length; i++) {
+        const thisToken = this.historyTokens[i].token;
         if (thisToken == tokenBase64 && this.historyTokens[i].amount > 0) {
           seen = true;
         }
@@ -668,7 +673,7 @@ export default {
     // get lightning invoice from a link
     if (params.get("lightning")) {
       this.showParseDialog();
-      this.payInvoiceData.input.request = params.get("lightning");
+      this.payInvoiceData.input.request = params.get("lightning") as string;
     }
 
     // Clear all parameters from URL without refreshing the page
@@ -708,8 +713,10 @@ export default {
 
     this.initSigner();
 
-    // show welcome dialog
-    this.showWelcomePage();
+    // Suppress cashu.me stock welcome — FlashShell handles onboarding
+    useWelcomeStore().showWelcome = false;
+    // show welcome dialog - disabled, FlashShell handles this
+    // this.showWelcomePage();
 
     // listen to NWC commands if enabled
     if (this.nwcEnabled) {

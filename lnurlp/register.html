@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Flash Address - Register</title>
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --surface: #111114;
+        --surface-raised: #1a1a1e;
+        --border: rgba(255, 255, 255, 0.08);
+        --primary: #41ad49;
+        --primary-dim: rgba(65, 173, 73, 0.12);
+        --text: #f5f5f5;
+        --text-muted: #888;
+        --rc: 16px;
+        --ri: 12px;
+        --font: -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--rc);
+        padding: 40px 32px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+      }
+      .logo {
+        text-align: center;
+        margin-bottom: 8px;
+        font-size: 2.5rem;
+      }
+      .title {
+        text-align: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 6px;
+      }
+      .sub {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin-bottom: 32px;
+        line-height: 1.5;
+      }
+      .sub span {
+        color: var(--primary);
+        font-weight: 500;
+      }
+      label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .ig {
+        display: flex;
+        align-items: center;
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-radius: var(--ri);
+        overflow: hidden;
+      }
+      .ig input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-size: 1rem;
+        padding: 14px 16px;
+      }
+      .ig input::placeholder {
+        color: var(--text-muted);
+      }
+      .sfx {
+        padding-right: 14px;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        white-space: nowrap;
+      }
+      .fg {
+        margin-bottom: 20px;
+      }
+      .hint {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 6px;
+      }
+      .st {
+        font-size: 0.8rem;
+        margin-top: 6px;
+        min-height: 18px;
+      }
+      .st.ok {
+        color: var(--primary);
+      }
+      .st.err {
+        color: #f87171;
+      }
+      .btn {
+        width: 100%;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: var(--ri);
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 15px;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .sc {
+        background: var(--primary-dim);
+        border: 1px solid rgba(65, 173, 73, 0.3);
+        border-radius: var(--rc);
+        padding: 24px;
+        text-align: center;
+        display: none;
+      }
+      .sc .addr {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin: 12px 0;
+      }
+      .footer {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 24px;
+      }
+      .footer a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">&#x26A1;</div>
+      <div class="title">Flash Address</div>
+      <div class="sub">
+        Claim your Lightning address at <span>ecash.flashapp.me</span>
+      </div>
+      <div id="fs">
+        <div class="fg">
+          <label for="u">Username</label>
+          <div class="ig">
+            <input
+              id="u"
+              type="text"
+              placeholder="satoshi"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+            /><span class="sfx">@ecash.flashapp.me</span>
+          </div>
+          <div id="us" class="st"></div>
+        </div>
+        <div class="fg">
+          <label for="p">Nostr Public Key</label>
+          <div class="ig">
+            <input
+              id="p"
+              type="text"
+              placeholder="npub1... or hex pubkey"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <div class="hint">Routes ecash to your wallet</div>
+          <div id="ps" class="st"></div>
+        </div>
+        <button id="rb" class="btn" disabled>Register Address</button>
+        <div id="rs" class="st" style="margin-top: 12px"></div>
+      </div>
+      <div class="sc" id="sc">
+        <div style="font-size: 2rem">&#x2705;</div>
+        <div style="font-weight: 600; margin-top: 8px">Address registered!</div>
+        <div class="addr" id="sa"></div>
+        <div style="color: var(--text-muted); font-size: 0.875rem">
+          Share to receive ecash payments.
+        </div>
+      </div>
+      <div class="footer">
+        Powered by <a href="https://ecash.flashapp.me">Flash Ecash</a>
+      </div>
+    </div>
+    <script>
+      const A = "https://ecash.flashapp.me",
+        uI = document.getElementById("u"),
+        pI = document.getElementById("p"),
+        rB = document.getElementById("rb"),
+        uS = document.getElementById("us"),
+        pS = document.getElementById("ps"),
+        rS = document.getElementById("rs"),
+        sC = document.getElementById("sc"),
+        sA = document.getElementById("sa"),
+        fS = document.getElementById("fs");
+      let uV = false,
+        pV = false,
+        db = null;
+      uI.addEventListener("input", () => {
+        const v = uI.value.trim().toLowerCase();
+        uS.textContent = "";
+        uS.className = "st";
+        uV = false;
+        upd();
+        if (!v) return;
+        if (!/^[a-z0-9_.-]+$/.test(v) || v.length < 3) {
+          uS.textContent = "Lowercase, numbers, _ . - Min 3";
+          uS.className = "st err";
+          return;
+        }
+        clearTimeout(db);
+        db = setTimeout(() => chk(v), 600);
+      });
+      async function chk(n) {
+        uS.textContent = "Checking...";
+        uS.className = "st";
+        try {
+          const r = await fetch(A + "/api/register/" + n, { method: "HEAD" });
+          if (r.status === 404) {
+            uS.textContent = n + "@ecash.flashapp.me available";
+            uS.className = "st ok";
+            uV = true;
+          } else {
+            uS.textContent = "Username taken";
+            uS.className = "st err";
+            uV = false;
+          }
+        } catch {
+          uS.textContent = "Could not check";
+          uS.className = "st err";
+        }
+        upd();
+      }
+      pI.addEventListener("input", () => {
+        const v = pI.value.trim();
+        pS.textContent = "";
+        pS.className = "st";
+        pV = v.length >= 32;
+        if (v && !pV) {
+          pS.textContent = "Enter valid npub or hex key";
+          pS.className = "st err";
+        }
+        upd();
+      });
+      function upd() {
+        rB.disabled = !(uV && pV);
+      }
+      rB.addEventListener("click", async () => {
+        const u = uI.value.trim().toLowerCase(),
+          p = pI.value.trim();
+        rB.disabled = true;
+        rS.textContent = "Registering...";
+        rS.className = "st";
+        try {
+          const r = await fetch(A + "/api/register/" + u, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pubkey: p }),
+          });
+          const d = await r.json();
+          if (r.ok) {
+            fS.style.display = "none";
+            sC.style.display = "block";
+            sA.textContent = u + "@ecash.flashapp.me";
+          } else {
+            rS.textContent = d.error || "Failed";
+            rS.className = "st err";
+            rB.disabled = false;
+          }
+        } catch {
+          rS.textContent = "Network error";
+          rS.className = "st err";
+          rB.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

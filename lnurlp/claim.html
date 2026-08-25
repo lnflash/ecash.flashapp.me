@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Flash Address - Claim</title>
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --surface: #111114;
+        --surface-raised: #1a1a1e;
+        --border: rgba(255, 255, 255, 0.08);
+        --primary: #41ad49;
+        --primary-dim: rgba(65, 173, 73, 0.12);
+        --text: #f5f5f5;
+        --text-muted: #888;
+        --rc: 16px;
+        --ri: 12px;
+        --font: -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--rc);
+        padding: 40px 32px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+      }
+      .logo {
+        text-align: center;
+        margin-bottom: 8px;
+        font-size: 2.5rem;
+      }
+      .title {
+        text-align: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 6px;
+      }
+      .sub {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        margin-bottom: 32px;
+        line-height: 1.5;
+      }
+      .sub span {
+        color: var(--primary);
+        font-weight: 500;
+      }
+      label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .ig {
+        display: flex;
+        align-items: center;
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-radius: var(--ri);
+        overflow: hidden;
+      }
+      .ig input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-size: 1rem;
+        padding: 14px 16px;
+      }
+      .ig input::placeholder {
+        color: var(--text-muted);
+      }
+      .sfx {
+        padding-right: 14px;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        white-space: nowrap;
+      }
+      .fg {
+        margin-bottom: 20px;
+      }
+      .st {
+        font-size: 0.8rem;
+        margin-top: 6px;
+        min-height: 18px;
+      }
+      .st.ok {
+        color: var(--primary);
+      }
+      .st.err {
+        color: #f87171;
+      }
+      .btn {
+        width: 100%;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: var(--ri);
+        font-size: 1rem;
+        font-weight: 600;
+        padding: 15px;
+        cursor: pointer;
+        margin-top: 8px;
+      }
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .pc {
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-radius: var(--rc);
+        padding: 20px;
+        margin-bottom: 20px;
+        display: none;
+      }
+      .pa {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary);
+        text-align: center;
+        margin: 8px 0;
+      }
+      .pl {
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.875rem;
+      }
+      .sc {
+        background: var(--primary-dim);
+        border: 1px solid rgba(65, 173, 73, 0.3);
+        border-radius: var(--rc);
+        padding: 24px;
+        text-align: center;
+        display: none;
+      }
+      .ec {
+        background: var(--surface-raised);
+        border: 1px solid var(--border);
+        border-radius: var(--rc);
+        padding: 24px;
+        text-align: center;
+        display: none;
+        color: var(--text-muted);
+      }
+      .footer {
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 24px;
+      }
+      .footer a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">&#x26A1;</div>
+      <div class="title">Claim ecash</div>
+      <div class="sub">
+        Check pending payments at your <span>Flash Address</span>
+      </div>
+      <div id="ls">
+        <div class="fg">
+          <label for="u">Your username</label>
+          <div class="ig">
+            <input
+              id="u"
+              type="text"
+              placeholder="satoshi"
+              autocomplete="off"
+              autocapitalize="none"
+              spellcheck="false"
+            /><span class="sfx">@ecash.flashapp.me</span>
+          </div>
+        </div>
+        <button id="cb" class="btn">Check for payments</button>
+        <div id="cs" class="st" style="margin-top: 12px"></div>
+      </div>
+      <div class="pc" id="pc">
+        <div class="pl">Pending payment</div>
+        <div class="pa" id="pa">- sats</div>
+        <div class="pl" id="pm"></div>
+        <button class="btn" id="clb" style="margin-top: 16px">
+          Open in Flash Wallet
+        </button>
+      </div>
+      <div class="ec" id="ec">
+        <div style="font-size: 1.5rem; margin-bottom: 8px">&#x1F4EB;</div>
+        <div>No pending payments found.</div>
+        <div style="font-size: 0.75rem; margin-top: 4px">
+          Payments arrive shortly after being sent.
+        </div>
+      </div>
+      <div class="sc" id="sc">
+        <div style="font-size: 2rem">&#x2705;</div>
+        <div style="font-weight: 600; margin-top: 8px">
+          Redirecting to wallet...
+        </div>
+      </div>
+      <div class="footer">
+        Powered by <a href="https://ecash.flashapp.me">Flash Ecash</a>
+      </div>
+    </div>
+    <script>
+      const A = "https://ecash.flashapp.me",
+        W = "https://ecash.flashapp.me",
+        uI = document.getElementById("u"),
+        cB = document.getElementById("cb"),
+        cS = document.getElementById("cs"),
+        pC = document.getElementById("pc"),
+        pA = document.getElementById("pa"),
+        pM = document.getElementById("pm"),
+        clB = document.getElementById("clb"),
+        eC = document.getElementById("ec"),
+        sC = document.getElementById("sc");
+      const params = new URLSearchParams(location.search);
+      if (params.get("u")) uI.value = params.get("u");
+      cB.addEventListener("click", async () => {
+        const u = uI.value.trim().toLowerCase();
+        if (!u) {
+          cS.textContent = "Enter username first.";
+          cS.className = "st err";
+          return;
+        }
+        cB.disabled = true;
+        cS.textContent = "Checking...";
+        cS.className = "st";
+        pC.style.display = "none";
+        eC.style.display = "none";
+        try {
+          const r = await fetch(A + "/api/claim/" + u);
+          if (!r.ok) throw new Error();
+          const d = await r.json();
+          if (!d.token || d.balance === 0) {
+            eC.style.display = "block";
+            cS.textContent = "";
+          } else {
+            pA.textContent = d.balance + " sats";
+            pM.textContent = d.mint ? "from " + d.mint : "";
+            pC.style.display = "block";
+            cS.textContent = "";
+            clB.onclick = () => {
+              sC.style.display = "block";
+              pC.style.display = "none";
+              setTimeout(() => {
+                window.location.href =
+                  W + "/?token=" + encodeURIComponent(d.token);
+              }, 800);
+            };
+          }
+        } catch {
+          cS.textContent = "No account found.";
+          cS.className = "st err";
+        }
+        cB.disabled = false;
+      });
+    </script>
+  </body>
+</html>

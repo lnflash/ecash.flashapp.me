@@ -95,10 +95,10 @@
       class="row q-mt-md q-mb-none text-secondary"
     >
       <div class="col-12">
-        <q-badge outline color="red" class="q-mr-xs q-mt-sm text-weight-bold">
+        <span class="text-red text-weight-bold">
           {{ $t("BalanceView.mintError.label") }}
-          <q-icon name="error" class="q-ml-xs" />
-        </q-badge>
+          <q-icon name="error" class="q-ml-xs" size="xs" />
+        </span>
       </div>
     </div>
     <!-- mint url -->
@@ -125,25 +125,6 @@
       </div>
     </div>
   </div>
-  <!-- pending -->
-  <div class="row q-mt-xs q-mb-none" v-if="pendingBalance > 0">
-    <div class="col-12">
-      <q-btn
-        name="history"
-        size="sm"
-        align="between"
-        color="secondary"
-        dense
-        outline
-        class="q-mx-none q-mt-xs q-pr-sm cursor-pointer"
-        @click="checkPendingTokens()"
-        ><q-icon name="history" size="1rem" class="q-mx-xs" />
-        {{ $t("BalanceView.pending.label") }}:
-        {{ formatCurrency(pendingBalance, this.activeUnit) }}
-        <q-tooltip>{{ $t("BalanceView.pending.tooltip") }}</q-tooltip>
-      </q-btn>
-    </div>
-  </div>
   <!-- </q-card-section>
   </q-card> -->
 </template>
@@ -161,6 +142,7 @@ import ToggleUnit from "components/ToggleUnit.vue";
 import AnimatedNumber from "components/AnimatedNumber.vue";
 import axios from "axios";
 import { map } from "underscore";
+import { sumProofAmounts } from "src/js/proofs";
 
 export default defineComponent({
   name: "BalanceView",
@@ -224,10 +206,7 @@ export default defineComponent({
       );
     },
     getBalance: function () {
-      var balance = this.activeProofs
-        .flat()
-        .reduce((sum, el) => (sum += el.amount), 0);
-      return balance;
+      return sumProofAmounts(this.activeProofs.flat());
     },
   },
   data() {

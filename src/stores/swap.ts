@@ -1,8 +1,10 @@
-import { useLocalStorage } from "@vueuse/core";
-import { date } from "quasar";
 import { defineStore } from "pinia";
-import { PaymentRequest, Proof, Token, MeltQuoteResponse } from "@cashu/cashu-ts";
-import { Mint, useMintsStore } from "./mints";
+import {
+  PaymentRequest,
+  Token,
+  MeltQuoteBolt11Response,
+} from "@cashu/cashu-ts";
+import { StoredMint, useMintsStore } from "./mints";
 import { useWalletStore } from "./wallet";
 import { useProofsStore } from "./proofs";
 import { notifyError, notifyWarning } from "../js/notify";
@@ -28,7 +30,7 @@ export type HistoryToken = {
   unit: string;
   paymentRequest?: PaymentRequest;
   fee?: number;
-  meltQuote?: MeltQuoteResponse;
+  meltQuote?: MeltQuoteBolt11Response;
   paidDate?: string;
 };
 
@@ -54,19 +56,23 @@ export const useSwapStore = defineStore("swap", {
       try {
         // get invoice
         // await mintStore.activateMintUrl(swapAmountData.toUrl);
-        const toWallet = walletStore.mintWallet(
+        const toWallet = await walletStore.mintWallet(
           swapAmountData.toUrl,
-          mintStore.activeUnit
+          mintStore.activeUnit,
+          true
         );
-        const mintQuote = await walletStore.requestMint(
+        const mintQuote = await walletStore.requestMintBolt11(
+          // changed by refactor: requestMint -> requestMintBolt11
+
           swapAmountData.amount,
           toWallet
         );
 
         // pay invoice
-        const fromWallet = walletStore.mintWallet(
+        const fromWallet = await walletStore.mintWallet(
           swapAmountData.fromUrl,
-          mintStore.activeUnit
+          mintStore.activeUnit,
+          true
         );
         const meltQuote = await walletStore.meltQuote(
           fromWallet,
@@ -82,7 +88,7 @@ export const useSwapStore = defineStore("swap", {
         await walletStore.melt(mintProofs, meltQuote, fromWallet);
 
         // settle invoice on other side
-        await walletStore.checkInvoice(mintQuote.quote);
+        await walletStore.checkInvoiceBolt11(mintQuote.quote);
       } catch (e) {
         console.error("Error swapping", e);
         notifyError(i18n.global.t("swap.swap_error_text"));
@@ -90,22 +96,22 @@ export const useSwapStore = defineStore("swap", {
         this.swapBlocking = false;
       }
     },
-    meltToMintFees: function (tokenJson: Token) {
+    meltToMintFees: async function (tokenJson: Token) {
       const proofsStore = useProofsStore();
       const walletStore = useWalletStore();
       const fromMintUrl = token.getMint(tokenJson);
       const unit = token.getUnit(tokenJson);
       const tokenAmount = proofsStore.sumProofs(token.getProofs(tokenJson));
-      let meltAmount = tokenAmount - Math.max(2, tokenAmount * 0.02);
+      let meltAmount = tokenAmount - Math.max(2, Math.ceil(tokenAmount * 0.02));
       try {
         // walletStore.mintWallet(fromMintUrl, unit); will fail if we don't have fromMintUrl yet
-        const fromWallet = walletStore.mintWallet(fromMintUrl, unit);
+        const fromWallet = await walletStore.mintWallet(fromMintUrl, unit);
         const proofs = token.getProofs(tokenJson);
-        meltAmount -= fromWallet.getFeesForProofs(proofs);
-      } catch (e) { }
+        meltAmount -= fromWallet.getFeesForProofs(proofs).toNumber();
+      } catch (e) {}
       return tokenAmount - meltAmount;
     },
-    meltProofsToMint: async function (tokenJson: Token, mint: Mint) {
+    meltProofsToMint: async function (tokenJson: Token, mint: StoredMint) {
       const proofsStore = useProofsStore();
       const walletStore = useWalletStore();
       if (this.swapBlocking) {
@@ -116,22 +122,30 @@ export const useSwapStore = defineStore("swap", {
       this.swapBlocking = true;
       try {
         const tokenAmount = proofsStore.sumProofs(token.getProofs(tokenJson));
-        let meltAmount = tokenAmount - Math.max(2, tokenAmount * 0.02);
+        let meltAmount =
+          tokenAmount - Math.max(2, Math.ceil(tokenAmount * 0.02));
         const unit = token.getUnit(tokenJson);
         const fromMintUrl = token.getMint(tokenJson);
-        const fromWallet = walletStore.mintWallet(fromMintUrl, unit);
-        const toWallet = walletStore.mintWallet(mint.url, unit);
+        const fromWallet = await walletStore.mintWallet(
+          fromMintUrl,
+          unit,
+          true
+        );
+        const toWallet = await walletStore.mintWallet(mint.url, unit, true);
         const proofs = token.getProofs(tokenJson);
-        meltAmount -= fromWallet.getFeesForProofs(proofs);
+        meltAmount -= fromWallet.getFeesForProofs(proofs).toNumber();
 
-        const mintQuote = await walletStore.requestMint(meltAmount, toWallet);
+        const mintQuote = await walletStore.requestMintBolt11(
+          meltAmount,
+          toWallet
+        );
         const meltQuote = await walletStore.meltQuote(
           fromWallet,
           mintQuote.request
         );
         await walletStore.melt(proofs, meltQuote, fromWallet);
 
-        await walletStore.checkInvoice(mintQuote.quote);
+        await walletStore.checkInvoiceBolt11(mintQuote.quote);
       } catch (e) {
         console.error("Error swapping", e);
         notifyError(i18n.global.t("swap.swap_error_text"));

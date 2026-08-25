@@ -79,6 +79,7 @@ export default {
       no_lnurl_data: "Pas de données LNURL",
       no_price_data: "Pas de données de prix.",
       please_try_again: "Veuillez réessayer.",
+      trying_again: "Nouvel essai en cours...",
     },
     mint: {
       notifications: {
@@ -1061,7 +1062,8 @@ export default {
         label: "Jeton invalide",
       },
       p2pk_lock_mismatch: {
-        label: "Impossible de recevoir. Le verrouillage P2PK de ce jeton ne correspond pas à votre clé publique.",
+        label:
+          "Impossible de recevoir. Le verrouillage P2PK de ce jeton ne correspond pas à votre clé publique.",
       },
     },
     actions: {
@@ -1361,6 +1363,9 @@ export default {
     },
     invoice: {
       title: "Payer { value }",
+      paying: "Paiement en cours",
+      paid: "Payé",
+      fee: "Frais",
       memo: {
         label: "Mémo",
       },
